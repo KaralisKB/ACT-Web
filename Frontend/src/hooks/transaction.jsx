@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../services/apiClient';
 
 export const useTransaction = () => {
     const [error, setError] = useState(null);
@@ -16,7 +16,7 @@ export const useTransaction = () => {
         }
 
         try {
-            const response = await axios.post(`https://act-production-5e24.up.railway.app/api/transaction`, {
+            const response = await api.post(`/api/transaction`, {
                 userId: user.id,
                 clientId,
                 ...payload,

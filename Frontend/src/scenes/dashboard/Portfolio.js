@@ -1,178 +1,70 @@
-import React, { useEffect, useState } from "react";
-import { Box, Button, Paper } from "@mui/material";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import axios from "axios";
-import Header from "../../components/Headers";
-import { tokens } from "../../theme";
-import { useTheme } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from 'react';
+import { Alert, Box, Paper, Typography } from '@mui/material';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import { Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import api from '../../services/apiClient';
+import Header from '../../components/Headers';
 
-const Portfolio = () => {
-  const user = JSON.parse(localStorage.getItem("user")); // Get the logged-in user
-  const selectedClient = JSON.parse(localStorage.getItem("selectedClient")); // Get the selected client
-  const history = useNavigate();
+const money = value => value == null ? 'Unavailable' : `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export default function Portfolio() {
   const [rows, setRows] = useState([]);
-  const [invAmt, setInvAmt] = useState(0);
-  const [currAmt, setCurrAmt] = useState(0);
-  const [tProfit, setTProfit] = useState(0);
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [missingQuotes, setMissingQuotes] = useState(false);
+  const navigate = useNavigate();
 
-  // Fetch the portfolio for the selected client
-  const fetchPortfolio = async () => {
-    if (!user || !selectedClient) {
-      console.error("User or selected client is missing.");
-      return;
-    }
-
-    try {
-      const response = await axios.get(
-        `https://act-production-5e24.up.railway.app/api/portfolio/${user.id}/${selectedClient}`
-      );
-
-      const portfolioData = response.data.portfolio || [];
-
-      let totalInvestedAmount = 0;
-      let totalCurrentAmount = 0;
-
-      const updatedPortfolio = await Promise.all(
-        portfolioData.map(async (stock) => {
-          try {
-            const finnHubResponse = await axios.get(
-              `https://finnhub.io/api/v1/quote?symbol=${stock.symbol}&token=ce80b8aad3i4pjr4v2ggce80b8aad3i4pjr4v2h0`
-            );
-            const currentPrice = finnHubResponse.data.c || 0;
-
-            const investedAmount = stock.quantity * stock.averagePrice;
-            const currentAmount = stock.quantity * currentPrice;
-            const profitLoss = currentAmount - investedAmount;
-
-            totalInvestedAmount += investedAmount;
-            totalCurrentAmount += currentAmount;
-
-            return {
-              id: stock.id,
-              name: stock.name,
-              symbol: stock.symbol,
-              quantity: stock.quantity,
-              averagePrice: stock.averagePrice,
-              currentPrice,
-              investedAmount,
-              currentAmount,
-              profitLoss,
-            };
-          } catch (error) {
-            console.error(`Error fetching data for ${stock.symbol}:`, error.message);
-            return {
-              ...stock,
-              currentPrice: 0,
-              investedAmount: 0,
-              currentAmount: 0,
-              profitLoss: 0,
-            };
-          }
-        })
-      );
-
-      setRows(updatedPortfolio);
-      setInvAmt(totalInvestedAmount);
-      setCurrAmt(totalCurrentAmount);
-      setTProfit(totalCurrentAmount - totalInvestedAmount);
-    } catch (error) {
-      console.error("Error fetching portfolio data:", error.message);
-    }
-  };
-
-  // Fetch portfolio on component mount
   useEffect(() => {
-    fetchPortfolio();
+    let active = true;
+    async function load() {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const client = JSON.parse(localStorage.getItem('selectedClient'));
+        const clientId = typeof client === 'string' ? client : client.id;
+        const response = await api.get(`/api/portfolio/${user.id}/${clientId}`);
+        const holdings = await Promise.all((response.data.portfolio || []).map(async stock => {
+          const investedAmount = (stock.costBasisCents ?? Math.round(stock.quantity * stock.averagePrice * 100)) / 100;
+          let currentPrice = null;
+          try {
+            const quote = await api.get(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(stock.symbol)}`);
+            if (Number.isFinite(quote.data.c) && quote.data.c > 0) currentPrice = quote.data.c;
+          } catch { /* Preserve the holding and cost basis when market data is unavailable. */ }
+          const currentAmount = currentPrice == null ? null : stock.quantity * currentPrice;
+          return { ...stock, investedAmount, currentPrice, currentAmount, profitLoss: currentAmount == null ? null : currentAmount - investedAmount };
+        }));
+        if (active) {
+          setRows(holdings);
+          setMissingQuotes(holdings.some(stock => stock.currentPrice == null));
+        }
+      } catch (err) {
+        if (active) setError(err.response?.data?.error || 'Your portfolio could not be loaded. Please try again.');
+      } finally { if (active) setLoading(false); }
+    }
+    load();
+    return () => { active = false; };
   }, []);
 
+  const invested = rows.reduce((sum, row) => sum + row.investedAmount, 0);
+  const current = missingQuotes ? null : rows.reduce((sum, row) => sum + row.currentAmount, 0);
   const columns = [
-    { field: "name", headerName: "Company Name", flex: 1 },
-    { field: "symbol", headerName: "Symbol", flex: 0.5 },
-    { field: "currentPrice", headerName: "Current Price", flex: 0.5, type: "number" },
-    { field: "averagePrice", headerName: "Average Price", flex: 0.5, type: "number" },
-    { field: "quantity", headerName: "Quantity", flex: 0.5, type: "number" },
-    { field: "currentAmount", headerName: "Current Amount", flex: 0.5, type: "number" },
-    { field: "investedAmount", headerName: "Invested Amount", flex: 0.5, type: "number" },
-    { field: "profitLoss", headerName: "Profit/Loss", flex: 0.5, type: "number" },
-    {
-      field: "Sell",
-      headerName: "Sell",
-      sortable: false,
-      renderCell: (params) => (
-        <Button
-          onClick={() => history("/sellStock", { state: params.row })}
-          variant="outlined"
-          color="error"
-        >
-          Sell
-        </Button>
-      ),
-    },
+    { field: 'name', headerName: 'Company Name', flex: 1, minWidth: 170 },
+    { field: 'symbol', headerName: 'Symbol', minWidth: 100 },
+    { field: 'quantity', headerName: 'Quantity', type: 'number', minWidth: 100 },
+    ...[['averagePrice', 'Average Price'], ['currentPrice', 'Current Price'], ['investedAmount', 'Invested Amount'], ['currentAmount', 'Current Amount'], ['profitLoss', 'Profit/Loss']].map(([field, headerName]) => ({ field, headerName, type: 'number', minWidth: 145, flex: 1, valueFormatter: params => money(params.value) })),
+    { field: 'sell', headerName: 'Sell', sortable: false, renderCell: params => <Button variant="outlined" color="error" onClick={() => navigate('/sellStock', { state: params.row })}>Sell</Button> },
   ];
 
-  return (
-    <Box m="20px">
-      <Header title="Portfolio" />
-      <Paper elevation={3}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            p: 5,
-            m: 1,
-            bgcolor: "background.paper",
-            borderRadius: 1,
-          }}
-        >
-          <div
-            style={{
-              margin: "5px 15px",
-              fontWeight: "bold",
-              paddingRight: "50px",
-              fontSize: "x-large",
-            }}
-          >
-            {"Invested Amount: "}
-            <div style={{ color: "blue", textAlign: "center" }}>
-              € {invAmt.toFixed(2)}
-            </div>
-          </div>
-          <div
-            style={{
-              margin: "5px 15px",
-              fontWeight: "bold",
-              paddingRight: "50px",
-              fontSize: "x-large",
-            }}
-          >
-            {"Current Amount: "}
-            <div style={{ color: "blue", textAlign: "center" }}>
-              € {currAmt.toFixed(2)}
-            </div>
-          </div>
-          <div
-            style={{
-              margin: "5px 15px",
-              fontWeight: "bold",
-              paddingRight: "50px",
-              fontSize: "x-large",
-            }}
-          >
-            {"Profit/Loss: "}
-            <div style={{ color: tProfit >= 0 ? "#03C03C" : "red", textAlign: "center" }}>
-              € {tProfit.toFixed(2)}
-            </div>
-          </div>
-        </Box>
-      </Paper>
-      <Box m="40px 0 0 0" height="75vh">
-        <DataGrid rows={rows} columns={columns} components={{ Toolbar: GridToolbar }} />
-      </Box>
-    </Box>
-  );
-};
-
-export default Portfolio;
+  return <Box m="20px">
+    <Header title="Portfolio" subtitle="Your virtual holdings • USD" />
+    {error && <Alert severity="error">{error}</Alert>}
+    {missingQuotes && <Alert severity="warning" sx={{ mb: 2 }}>Some market prices are unavailable. Your holdings are saved; current value and profit will appear when quotes return.</Alert>}
+    <Paper sx={{ p: 3, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {[['Invested Amount', invested], ['Current Amount', current], ['Profit/Loss', current == null ? null : current - invested]].map(([label, value]) => <Box key={label}>
+        <Typography color="text.secondary">{label}</Typography>
+        <Typography variant="h3">{error || loading ? '—' : money(value)}</Typography>
+      </Box>)}
+    </Paper>
+    <Box mt={4} height="65vh"><DataGrid rows={rows} columns={columns} loading={loading} components={{ Toolbar: GridToolbar }} /></Box>
+  </Box>;
+}

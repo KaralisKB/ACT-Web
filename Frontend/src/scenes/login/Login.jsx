@@ -20,7 +20,7 @@ const Login = () => {
 
   return (
     <AuthLayout title="Login">
-      <Box component="form" className="auth-form" onSubmit={handleSubmit} noValidate>
+      <Box component="form" className="auth-form" onSubmit={handleSubmit}>
         <TextField
           required
           fullWidth

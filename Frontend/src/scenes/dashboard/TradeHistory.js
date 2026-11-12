@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Box, CircularProgress, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination } from "@mui/material";
-import axios from "axios";
+import api from "../../services/apiClient";
 import Header from "../../components/Headers";
 
 const TradeHistory = () => {
@@ -23,8 +23,8 @@ const TradeHistory = () => {
     try {
       setLoading(true);
       console.log("Fetching orders...");
-      const response = await axios.get(
-        `https://act-production-5e24.up.railway.app/api/orders/${user.id}/${selectedClient}`
+      const response = await api.get(
+        `/api/orders/${user.id}/${typeof selectedClient === "string" ? selectedClient : selectedClient.id}`
       );
       console.log("Orders retrieved:", response.data);
 
@@ -99,10 +99,7 @@ const TradeHistory = () => {
                         : `$${row.totalEarnings.toFixed(2)}`}
                     </TableCell>
                     <TableCell>
-                      {console.log(row.date)}
-                      {row.date && row.date.toDate
-                        ? row.date.toDate().toLocaleString()
-                        : "Invalid Date"}
+                      {row.date?.toDate ? row.date.toDate().toLocaleString() : row.date?.seconds ? new Date(row.date.seconds * 1000).toLocaleString() : row.date ? new Date(row.date).toLocaleString() : "Pending"}
                     </TableCell>
 
 

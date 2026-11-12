@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    function validProfile(userId) {
+      let p = request.resource.data;
+      return p.keys().hasAll(['id', 'uid', 'email', 'firstName', 'lastName'])
+        && p.keys().hasOnly(['id', 'uid', 'email', 'firstName', 'lastName'])
+        && p.id == userId && p.uid == userId && p.email == request.auth.token.email
+        && p.firstName is string && p.firstName.size() <= 100
+        && p.lastName is string && p.lastName.size() <= 100;
+    }
+    function validClient() {
+      let c = request.resource.data;
+      return c.keys().hasOnly(['name', 'balanceCents', 'createdAt'])
+        && c.name is string && c.name.size() > 0 && c.name.size() <= 100
+        && c.balanceCents is int && c.balanceCents >= 0 && c.balanceCents < 9000000000000000
+        && c.createdAt is timestamp;
+    }
+    function hasClient(userId, clientId) {
+      return exists(/databases/$(database)/documents/users/$(userId)/clients/$(clientId));
+    }
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && validProfile(userId);
+      allow update: if isOwner(userId) && validProfile(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firstName', 'lastName']);
+
+      match /clients/{clientId} {
+        allow read: if isOwner(userId);
+        // This is virtual practice cash; no real deposits or payments are processed.
+        allow create: if isOwner(userId) && validClient()
+          && request.resource.data.balanceCents == 10000000
+          && request.resource.data.createdAt == request.time;
+        allow update: if isOwner(userId) && validClient()
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        match /watchlist/{stockId} {
+          allow read, delete: if isOwner(userId) && hasClient(userId, clientId);
+          allow create, update: if isOwner(userId) && hasClient(userId, clientId)
+            && request.resource.data.keys().hasOnly(['ticker', 'createdAt'])
+            && request.resource.data.ticker is string
+            && request.resource.data.ticker.size() > 0 && request.resource.data.ticker.size() <= 40
+            && request.resource.data.createdAt == request.time;
+        }
+        match /holdings/{stockId} {
+          allow read, delete: if isOwner(userId) && hasClient(userId, clientId);
+          allow create, update: if isOwner(userId) && hasClient(userId, clientId)
+            && request.resource.data.keys().hasOnly(['symbol', 'name', 'quantity', 'averagePrice', 'costBasisCents'])
+            && request.resource.data.symbol is string && request.resource.data.symbol.size() <= 40
+            && request.resource.data.name is string && request.resource.data.name.size() <= 200
+            && request.resource.data.quantity is int && request.resource.data.quantity > 0
+            && request.resource.data.costBasisCents is int && request.resource.data.costBasisCents >= 0
+            && (request.resource.data.averagePrice is int || request.resource.data.averagePrice is float)
+            && request.resource.data.averagePrice >= 0;
+        }
+        match /orders/{orderId} {
+          allow read: if isOwner(userId) && hasClient(userId, clientId);
+          allow create: if isOwner(userId) && hasClient(userId, clientId)
+            && request.resource.data.keys().hasOnly(['type', 'symbol', 'name', 'quantity', 'price', 'totalCost', 'totalEarnings', 'date'])
+            && request.resource.data.type in ['BUY', 'SELL']
+            && request.resource.data.symbol is string && request.resource.data.symbol.size() <= 40
+            && request.resource.data.name is string && request.resource.data.name.size() <= 200
+            && request.resource.data.quantity is int && request.resource.data.quantity > 0
+            && request.resource.data.price > 0
+            && request.resource.data.totalCost >= 0 && request.resource.data.totalEarnings >= 0
+            && request.resource.data.date == request.time;
+        }
+      }
+      match /alerts/{alertId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['stockSymbol', 'targetPrice', 'condition', 'createdAt'])
+          && request.resource.data.stockSymbol is string && request.resource.data.stockSymbol.size() <= 40
+          && request.resource.data.targetPrice > 0
+          && request.resource.data.condition in ['above', 'below']
+          && request.resource.data.createdAt == request.time;
+      }
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

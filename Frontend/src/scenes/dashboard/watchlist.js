@@ -1,4 +1,4 @@
-import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions } from "@mui/material";
+import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { tokens } from "../../theme";
 import { useTheme } from "@mui/material";
@@ -7,13 +7,14 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../../services/apiClient";
 import { CircularProgress } from "@mui/material";
 
 const Watchlist = () => {
   const storedData = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = storedData?.id; // Retrieve the user ID from localStorage
 
+  const [error, setError] = useState('');
   const [rows, setRows] = useState([]); // Watchlisted stocks
   const [isLoading, setIsLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false); // State to handle dialog
@@ -40,12 +41,13 @@ const Watchlist = () => {
   const handleDialogOpen = async (stockTicker) => {
     try {
       const stockUrl = `https://finnhub.io/api/v1/quote?symbol=${stockTicker}&token=ce80b8aad3i4pjr4v2ggce80b8aad3i4pjr4v2h0`;
-      const response = await axios.get(stockUrl);
+      const response = await api.get(stockUrl);
       setTicker(stockTicker);
-      setCurrentPrice(response.data.c || "N/A");
+      if (!Number.isFinite(response.data.c) || response.data.c <= 0) throw new Error("Quote unavailable");
+      setCurrentPrice(response.data.c);
       setOpenDialog(true);
     } catch (error) {
-      console.error("Error fetching stock price:", error.response?.data || error.message);
+      setError("A current market quote is unavailable. Try again later.");
     }
   };
 
@@ -70,11 +72,11 @@ const Watchlist = () => {
       const clientId = selectedClient?.id || selectedClient;
 
       if (!userId || !clientId) {
-        alert("User ID or Client ID is missing. Please log in again.");
+        setError("Please select a client or log in again.");
         return;
       }
 
-      await axios.post("https://act-production-5e24.up.railway.app/api/alerts/add", {
+      await api.post("/api/alerts/add", {
         userId,
         stockSymbol: ticker,
         targetPrice: parseFloat(alertPrice),
@@ -84,7 +86,7 @@ const Watchlist = () => {
       alert("Price alert added successfully.");
       handleDialogClose();
     } catch (error) {
-      console.error("Error adding price alert:", error.response?.data || error.message);
+      setError(error.response?.data?.error || "The price alert could not be saved.");
     }
   };
 
@@ -96,21 +98,14 @@ const Watchlist = () => {
     setAIRecStock(stockTicker); // Set the stock being queried
   
     try {
-      const payload = { stock_ticker: stockTicker };
-      const response = await axios.post("https://act-ai-production.up.railway.app/analyze", payload);
-  
-      let fetchedRecommendation = response.data?.recommendation || "No recommendation available.";
-      let fetchedReasoning = response.data?.reasoning || "No reasoning available.";
-  
-      // Check for inconsistencies and align the recommendation
-      if (fetchedReasoning.toLowerCase().includes("sell") && fetchedRecommendation.toLowerCase() !== "sell") {
-        fetchedRecommendation = "Sell";
-      } else if (fetchedReasoning.toLowerCase().includes("buy") && fetchedRecommendation.toLowerCase() !== "buy") {
-        fetchedRecommendation = "Buy";
-      } else if (fetchedReasoning.toLowerCase().includes("hold") && fetchedRecommendation.toLowerCase() !== "hold") {
-        fetchedRecommendation = "Hold";
+      if (!process.env.REACT_APP_AI_API_URL) {
+        setAIRecResponse('Service unavailable');
+        setReasoning('The previous AI service is offline. A replacement analysis service must be connected before recommendations can resume.');
+        return;
       }
-  
+      const response = await api.post(process.env.REACT_APP_AI_API_URL, { stock_ticker: stockTicker });
+      const fetchedRecommendation = response.data?.recommendation || 'No recommendation available.';
+      const fetchedReasoning = response.data?.reasoning || 'No reasoning available.';
       setAIRecResponse(fetchedRecommendation);
       setReasoning(fetchedReasoning);
     } catch (error) {
@@ -144,13 +139,14 @@ const Watchlist = () => {
 
     if (!userId || !clientId) {
         console.error("User ID or Client ID is missing or undefined.");
-        alert("User ID or Client ID is missing. Please log in again.");
+        setError("Please select a client or log in again.");
+        setIsLoading(false);
         return;
     }
 
     try {
-        const response = await axios.get(
-            `https://act-production-5e24.up.railway.app/api/watchlist/${userId}/${clientId}`
+        const response = await api.get(
+            `/api/watchlist/${userId}/${clientId}`
         );
         console.log("Fetched watchlist:", response.data);
 
@@ -158,15 +154,15 @@ const Watchlist = () => {
             response.data.map(async (stock, index) => {
                 try {
                     const stockUrl = `https://finnhub.io/api/v1/quote?symbol=${stock.ticker}&token=ce80b8aad3i4pjr4v2ggce80b8aad3i4pjr4v2h0`;
-                    const stockResponse = await axios.get(stockUrl);
+                    const stockResponse = await api.get(stockUrl);
                     const stockData = stockResponse.data;
 
                     return {
                         id: index, // Unique ID for DataGrid
                         name: stock.ticker, // Placeholder for company name (adjust if needed)
                         symbol: stock.ticker, // Symbol of the stock
-                        today: stockData.c || "N/A", // Current price
-                        Percent: stockData.dp ? `${stockData.dp}%` : "N/A", // Percent change
+                        today: stockData.c > 0 ? stockData.c : "N/A", // Current price
+                        Percent: Number.isFinite(stockData.dp) ? `${stockData.dp}%` : "N/A", // Percent change
                         open: stockData.o || "N/A", // Open price
                         high: stockData.h || "N/A", // High price
                         low: stockData.l || "N/A", // Low price
@@ -195,7 +191,7 @@ const Watchlist = () => {
 
         setRows(transformedData); // Update the DataGrid rows with transformed data
     } catch (error) {
-        console.error("Error fetching watchlist:", error.response?.data || error.message);
+        setError(error.response?.data?.error || "Your watchlist could not be loaded.");
     } finally {
         setIsLoading(false);
     }
@@ -214,13 +210,13 @@ const Watchlist = () => {
     // Validation check for required IDs
     if (!userId || !clientId) {
         console.error("User ID or Client ID is missing or undefined.");
-        alert("User ID or Client ID is missing. Please log in again.");
+        setError("Please select a client or log in again.");
         return;
     }
 
     try {
         // Make the API call to delete the stock
-        await axios.delete("https://act-production-5e24.up.railway.app/api/watchlist/remove", {
+        await api.delete("/api/watchlist/remove", {
             data: { userId, clientId, stockTicker }, // Include userId and clientId in the request
         });
 
@@ -229,21 +225,21 @@ const Watchlist = () => {
         // Update the rows state
         setRows((prevRows) => prevRows.filter((row) => row.symbol !== stockTicker)); // Update rows to remove the deleted stock
     } catch (error) {
-        console.error("Error removing stock from client's watchlist:", error.response?.data || error.message);
+        setError(error.response?.data?.error || "The stock could not be removed.");
     }
 };
 
 const fetchPriceAlerts = async () => {
   setLoading(true); // Start loading
   try {
-      const response = await axios.get(
-          `https://act-production-5e24.up.railway.app/api/alerts/${userId}`
+      const response = await api.get(
+          `/api/alerts/${userId}`
       );
       console.log("Fetched alerts from backend:", response.data.alerts); // Debugging response
       setAlerts(response.data.alerts); // Ensure this sets the alerts array properly
       setOpenAlertsDialog(true); // Open dialog only after alerts are fetched
   } catch (error) {
-      console.error("Error fetching price alerts:", error.response?.data || error.message);
+      setError(error.response?.data?.error || "The alerts could not be loaded.");
   } finally {
       setLoading(false); // Stop loading
   }
@@ -252,12 +248,12 @@ const fetchPriceAlerts = async () => {
 
 const deletePriceAlert = async (alertId) => {
   try {
-    await axios.delete(`https://act-production-5e24.up.railway.app/api/alerts/remove`, {
+    await api.delete(`/api/alerts/remove`, {
       data: { userId, alertId }, // Sending `userId` and `alertId` in the request body
     });
     setAlerts((prevAlerts) => prevAlerts.filter((alert) => alert.id !== alertId));
   } catch (error) {
-    console.error("Error deleting price alert:", error.response?.data || error.message);
+    setError(error.response?.data?.error || "The alert could not be removed.");
   }
 };
 
@@ -273,10 +269,10 @@ const deletePriceAlert = async (alertId) => {
   }, []);
 
   const columns = [
-    { field: "name", headerName: "Company Name", flex: 1 },
+    { field: "name", headerName: "Company Name", flex: 1, minWidth: 160 },
     { field: "symbol", headerName: "Symbol", flex: 0.5 },
-    { field: "today", headerName: "Current Price", flex: 0.5, type: "number" },
-    { field: "Percent", headerName: "Percent Change", flex: 0.5, type: "number" },
+    { field: "today", headerName: "Current Price", flex: 0.5, minWidth: 125, type: "number" },
+    { field: "Percent", headerName: "Percent Change", flex: 0.5, minWidth: 125, type: "number" },
     { field: "open", headerName: "Open", flex: 0.3, type: "number" },
     { field: "high", headerName: "High", flex: 0.3, type: "number" },
     { field: "low", headerName: "Low", flex: 0.3, type: "number" },
@@ -284,6 +280,7 @@ const deletePriceAlert = async (alertId) => {
     {
       field: "AI Rec",
       headerName: "AI Recommendation",
+      minWidth: 165,
       sortable: false,
       renderCell: (params) => (
         <Button
@@ -298,6 +295,7 @@ const deletePriceAlert = async (alertId) => {
     {
       field: "Add Alert",
       headerName: "Price Alert",
+      minWidth: 135,
       sortable: false,
       renderCell: (params) => (
         <Button
@@ -364,6 +362,8 @@ const deletePriceAlert = async (alertId) => {
   return (
     <Box m="20px">
       <Header title="Watchlist" subtitle="Your Watchlisted Stocks" />
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Typography color="text.secondary" sx={{ mb: 2 }}>Price alerts are saved targets; background notifications are not active.</Typography>
       <Button
         variant="contained"
         color="primary"

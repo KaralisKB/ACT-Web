@@ -8,7 +8,7 @@ export default function Copyright(props) {
 
     return (
       <Typography variant="body2" color="text.primary" align="center" {...props}>
-        <Link color="inherit" sx={{textDecoration:"none"}} href="https://github.com/neu-mis-info6150-fall-2022/final-project-jams/tree/main">
+        <Link color="inherit" sx={{textDecoration:"none"}} href="https://lululogics.netlify.app/">
           made with love by Lulu, Kris, Izzy & Vee
         </Link>{' '}
         {new Date().getFullYear()}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import axios from "axios";
+import api from "../../services/apiClient";
 import Header from "../../components/Headers";
 
 const Orders = () => {
@@ -23,9 +23,9 @@ const Orders = () => {
     }
 
     try {
-      console.log(`Calling API for user: ${user.id}, client: ${selectedClient.id}`);
-      const response = await axios.get(
-        `https://act-production-5e24.up.railway.app/api/orders/${user.id}/${selectedClient.id}`
+      console.log(`Calling API for user: ${user.id}, client: ${typeof selectedClient === "string" ? selectedClient : selectedClient.id}`);
+      const response = await api.get(
+        `/api/orders/${user.id}/${typeof selectedClient === "string" ? selectedClient : selectedClient.id}`
       );
 
       console.log("API response received:", response.data);

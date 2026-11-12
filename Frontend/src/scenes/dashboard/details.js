@@ -2,35 +2,23 @@ import * as React from "react";
 import { Suspense } from "react";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
-import Chart from "./RSIChart";
 import Orders from "./Orders";
 //import { fetchData } from "../charts/data.js";
 import TradingWidget from "../../Charts/tradingView";
-import Quotes from "../../Charts/Quotes";
 import NewsLoad from "../../Charts/NewsLoad";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-import Button from "@mui/material/Button";
-import { useEffect, useState } from "react";
 
 import {
   MarketOverview,
   TechnicalAnalysis,
 } from "react-ts-tradingview-widgets";
-import { useAuthContext } from "../../hooks/useAuthContext.jsx";
 
 const DashboardContent = () => {
-  const history = useNavigate();
   const location = useLocation();
 
-  if (location.state.symbol === null) {
-    history("/");
-  }
+  if (!location.state?.symbol) return <Navigate to="/home" replace />;
 
-  function AdvanceChart(props) {
-    console.log("CALLING LIGHT WEIGHT CHART", props);
-    history("/lightWeight", { state: props });
-  }
   return (
     <>
       {/* Chart */}

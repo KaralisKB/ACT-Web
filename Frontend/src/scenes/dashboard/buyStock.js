@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, Grid, Typography, Avatar, Paper, Alert } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import axios from 'axios';
+import api from '../../services/apiClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import CssBaseline from "@mui/material/CssBaseline";
 
@@ -9,22 +9,25 @@ const BuyStock = () => {
     const [currentPrice, setCurrentPrice] = useState(null); // Current market price of the stock
     const [quantity, setQuantity] = useState('');
     const [total, setTotal] = useState(0); // Total cost = price * quantity
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null); // Error message handling
     const navigate = useNavigate();
     const location = useLocation();
 
     const user = JSON.parse(localStorage.getItem('user')); // Fetch user details from localStorage
     const selectedClient = JSON.parse(localStorage.getItem('selectedClient')); // Fetch selected client from localStorage
-    const { symbol, name } = location.state; // Stock details from navigation state
+    const { symbol, name } = location.state || {}; // Stock details from navigation state
 
     // Fetch the current price of the stock
     useEffect(() => {
         const fetchPrice = async () => {
+            if (!symbol) { setError('Choose a stock from the watchlist first.'); return; }
             try {
-                const response = await axios.get(
+                const response = await api.get(
                     `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=ce80b8aad3i4pjr4v2ggce80b8aad3i4pjr4v2h0`
                 );
-                setCurrentPrice(response.data.c); // Update current price
+                if (!Number.isFinite(response.data.c) || response.data.c <= 0) throw new Error("Quote unavailable");
+                setCurrentPrice(response.data.c);
             } catch (err) {
                 setError('Failed to fetch current stock price');
             }
@@ -34,13 +37,12 @@ const BuyStock = () => {
 
     // Calculate the total cost whenever quantity changes
     useEffect(() => {
-        if (currentPrice && quantity) {
-            setTotal(currentPrice * quantity);
-        }
+        setTotal(currentPrice && quantity ? Math.round(currentPrice * Number(quantity) * 100) / 100 : 0);
     }, [currentPrice, quantity]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
         setError(null);
 
         if (!selectedClient) {
@@ -48,30 +50,31 @@ const BuyStock = () => {
             return;
         }
 
+        setIsSubmitting(true);
         try {
             const payload = {
                 userId: user.id,
-                clientId: selectedClient,
+                clientId: typeof selectedClient === "string" ? selectedClient : selectedClient.id,
                 symbol,
                 name,
-                quantity: parseInt(quantity, 10),
+                quantity: Number(quantity),
                 price: currentPrice,
                 totalCost: total,
             };
 
             // Make a transaction request
-            const response = await axios.post(`https://act-production-5e24.up.railway.app/api/buy`, payload);
+            const response = await api.post(`/api/buy`, payload);
 
             // If successful, navigate to portfolio
             alert(response.data.message || 'Stock purchased successfully');
             navigate('/portfolio');
         } catch (err) {
             setError(err.response?.data?.error || 'An error occurred during the transaction');
-        }
+        } finally { setIsSubmitting(false); }
     };
 
     return (
-        <Grid container component="main" sx={{ height: '100vh' }}>
+        <Grid container component="main" sx={{ minHeight: '100vh' }}>
             <CssBaseline />
             <Grid
                 item
@@ -93,6 +96,7 @@ const BuyStock = () => {
                     <Typography component="h1" variant="h5">
                         Buy Stock
                     </Typography>
+                    <Typography color="text.secondary">Virtual trading • Practice cash only</Typography>
                     {error && <Alert severity="error">{error}</Alert>}
                     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
                         <TextField
@@ -100,7 +104,7 @@ const BuyStock = () => {
                             fullWidth
                             id="name"
                             label="Stock Name"
-                            value={name}
+                            value={name || symbol || ''}
                             disabled
                         />
                         <TextField
@@ -108,7 +112,7 @@ const BuyStock = () => {
                             fullWidth
                             id="currentPrice"
                             label="Current Price"
-                            value={currentPrice ? `$${currentPrice.toFixed(2)}` : 'Loading...'}
+                            value={currentPrice ? `$${currentPrice.toFixed(2)}` : error ? 'Unavailable' : 'Loading...'}
                             disabled
                         />
                         <TextField
@@ -117,6 +121,7 @@ const BuyStock = () => {
                             id="quantity"
                             label="Quantity"
                             type="number"
+                            inputProps={{ min: 1, step: 1 }}
                             value={quantity}
                             onChange={(e) => setQuantity(e.target.value)}
                         />
@@ -133,7 +138,7 @@ const BuyStock = () => {
                             fullWidth
                             variant="contained"
                             sx={{ mt: 3, mb: 2 }}
-                            disabled={!quantity || !currentPrice}
+                            disabled={isSubmitting || !symbol || !Number.isInteger(Number(quantity)) || Number(quantity) <= 0 || !currentPrice}
                         >
                             Buy Stock
                         </Button>

@@ -24,7 +24,7 @@ const Register = () => {
 
   return (
     <AuthLayout title="Sign Up">
-      <Box component="form" className="auth-form" onSubmit={handleSubmit} noValidate>
+      <Box component="form" className="auth-form" onSubmit={handleSubmit}>
         <div className="auth-name-fields">
           <TextField
             required
@@ -68,6 +68,8 @@ const Register = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
+          inputProps={{ minLength: 6 }}
+          helperText="Use at least 6 characters."
         />
         <Button type="submit" disabled={isLoading} fullWidth variant="contained" className="auth-submit">
           {isLoading ? 'Creating account…' : 'Sign Up'}
