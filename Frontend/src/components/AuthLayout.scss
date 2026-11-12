@@ -1,0 +1,198 @@
+.auth-page {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  color: #f3f4ff;
+  background:
+    radial-gradient(ellipse at top left, rgba(76, 49, 192, 0.22), transparent 60%),
+    linear-gradient(135deg, #191263 0%, #1e2049 55%, #2a2d38 100%);
+
+  .auth-header {
+    padding: 24px;
+    text-align: center;
+    font-size: clamp(20px, 3vw, 32px);
+    line-height: 1.3;
+    font-weight: 700;
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
+
+  .auth-main {
+    width: 100%;
+    max-width: 1200px;
+    margin: auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+    align-items: center;
+    gap: clamp(24px, 4vw, 64px);
+  }
+
+  .auth-visual {
+    min-width: 0;
+
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 3 / 2;
+      object-fit: cover;
+      border-radius: 24px;
+      background-color: #141b2d;
+      border: 1px solid rgba(181, 174, 255, 0.18);
+      box-shadow: 0 24px 64px rgba(5, 8, 30, 0.3);
+    }
+  }
+
+  .auth-card {
+    width: 100%;
+    min-width: 0;
+    padding: clamp(24px, 3vw, 40px);
+    border-radius: 24px;
+    background: linear-gradient(145deg, #343d59, #2c344b);
+    border: 1px solid rgba(200, 194, 255, 0.2);
+    box-shadow: 0 24px 64px rgba(5, 8, 30, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .auth-icon {
+    margin: 0 auto 12px;
+    width: 48px;
+    height: 48px;
+    color: #d0c5ff;
+    background-color: rgba(172, 153, 255, 0.16);
+  }
+
+  .auth-title {
+    margin: 0 0 28px;
+    text-align: center;
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .auth-name-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .MuiTextField-root {
+    min-width: 0;
+  }
+
+  .MuiOutlinedInput-root {
+    color: #f3f4ff;
+    background-color: #252d43;
+    border-radius: 10px;
+
+    input {
+      font-size: 16px;
+    }
+
+    .MuiOutlinedInput-notchedOutline {
+      border-color: #63708c;
+    }
+
+    &:hover .MuiOutlinedInput-notchedOutline {
+      border-color: #9f9ac8;
+    }
+
+    &.Mui-focused .MuiOutlinedInput-notchedOutline {
+      border-color: #b8a6ff;
+    }
+  }
+
+  .MuiInputLabel-root {
+    color: #ccd2e6;
+
+    &.Mui-focused {
+      color: #d0c5ff;
+    }
+  }
+
+  .auth-submit {
+    min-height: 48px;
+    border-radius: 10px;
+    color: #19172e;
+    background-color: #b5a2ff;
+    box-shadow: 0 4px 16px rgba(16, 11, 52, 0.2);
+    font-size: 14px;
+    font-weight: 600;
+
+    &:hover {
+      background-color: #c6b7ff;
+      box-shadow: 0 6px 20px rgba(16, 11, 52, 0.3);
+    }
+
+    &.Mui-disabled {
+      color: #bdc5dc;
+      background-color: #4b5572;
+    }
+  }
+
+  .auth-switch {
+    margin: 4px 0 0;
+    color: #ccd2e6;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.6;
+
+    a {
+      display: inline-block;
+      color: #d0c5ff;
+      font-weight: 600;
+      text-underline-offset: 3px;
+    }
+  }
+
+  .MuiAlert-root {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 899px) {
+  .auth-page {
+    .auth-main {
+      max-width: 512px;
+      grid-template-columns: minmax(0, 1fr);
+      padding: 24px 24px 40px;
+    }
+
+    .auth-visual {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 479px) {
+  .auth-page {
+    .auth-header {
+      padding: 24px 16px 8px;
+    }
+
+    .auth-main {
+      padding: 24px 16px 32px;
+    }
+
+    .auth-card {
+      padding: 28px 20px;
+      border-radius: 20px;
+    }
+
+    .auth-name-fields {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 20px;
+    }
+  }
+}

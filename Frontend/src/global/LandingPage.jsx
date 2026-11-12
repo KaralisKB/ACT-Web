@@ -5,129 +5,72 @@ import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import { useNavigate } from "react-router-dom";
-import Grid from '@mui/material/Grid'; 
-import IconButton from '@mui/material/IconButton';
+import { Link } from 'react-router-dom';
 import EqualizerIcon from '@mui/icons-material/Equalizer';
-import { height } from '@mui/system';
 import Copyright from './Copyright';
 
-export default function ButtonAppBar() {
+const tradingImages = [
+  {
+    src: 'https://media.istockphoto.com/id/943292690/photo/financial-and-technical-data-analysis-graph-showing-stock-market-trends.jpg?s=612x612&w=0&k=20&c=pPx6ScJIqxo60fAExwJRIzYNQ_Jd-l-L78yUIJEzfAY=',
+    alt: 'Stock market trends and financial data',
+  },
+  {
+    src: 'https://wallpaperaccess.com/full/1393720.jpg',
+    alt: 'Stock prices and market performance',
+  },
+  {
+    src: 'https://the-tech-trend.com/wp-content/uploads/2021/02/How-to-read-Candlestick-Trading-Charts-A-Complete-Guide-for-Beginners.jpg',
+    alt: 'Candlestick trading chart',
+  },
+  {
+    src: 'https://media.istockphoto.com/photos/close-up-image-of-a-stock-market-graph-picture-id1213574690?b=1&k=20&m=1213574690&s=612x612&w=0&h=N2lNvavpoTFOjBHIVbKd2BmFj9Q3wjqEpxT5AASB50M=',
+    alt: 'Close-up of a stock market graph',
+  },
+];
 
-    let navigate = useNavigate();
-
-  async function loginHandler(event) {
-    event.preventDefault();
-    // await submitForm(event.target);
-    navigate("../login");
-    // replace: true will replace the current entry in 
-    // the history stack instead of adding a new one.
-
-  }
-
-  async function registerHandler(event) {
-    event.preventDefault();
-    // await submitForm(event.target);
-    navigate("../register");
-    // replace: true will replace the current entry in 
-    // the history stack instead of adding a new one.
-
-  }
-
+export default function LandingPage() {
   return (
-    <Box 
-      sx={{
-        width: "100%",
-        minHeight: "100vh", // Ensures full viewport coverage
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#141b2d"
-      }}
-    >
-        <AppBar position="static">
-        <Toolbar>
-          <IconButton
-              size="large"
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              sx={{ mr: 2 }}
-              // justifyContent="center"
-            >
-              <EqualizerIcon/>
-          </IconButton>
-
-          <Typography width="85%" variant="h6" component="div" >
-            <a href='/' style={{color: 'inherit', textDecoration: 'none'}}>Stock Portfolio Mangement</a>
-          </Typography>
-        
-          <Typography sx={{ justifyContent:"space-between", display:"flex"}}>
-            <Button color="inherit" onClick={loginHandler}>Login</Button>
-            <Button color="inherit" onClick={registerHandler}>Signup</Button>
-          </Typography>
-          
+    <Box className="landing-page">
+      <AppBar position="static">
+        <Toolbar className="landing-toolbar">
+          <Link className="landing-brand" to="/">
+            <EqualizerIcon aria-hidden="true" />
+            <Typography component="span" variant="h6">
+              Stock Portfolio Management
+            </Typography>
+          </Link>
+          <Box component="nav" aria-label="Account" className="landing-nav">
+            <Button color="inherit" component={Link} to="/login">Login</Button>
+            <Button color="inherit" component={Link} to="/register">Signup</Button>
+          </Box>
         </Toolbar>
       </AppBar>
-      
-      <Typography sx={{ marginTop: "1%", paddingTop:"8%", paddingBottom:"19%",marginLeft:"10%", fontSize:70, color:"white"}} 
-                      className="stocksTransform" display="flex" component="div" variant='h2'>
-        <div>
-          <p>Invest in
-          <span>US Stocks</span> 
-          <span>IPO</span> 
-          <span>Future</span> 
-          <span>Yourself</span> 
-          <span>Options</span> 
-          </p> 
-        </div> 
-        
-        <div className="Tile1">
-          <a  class="" 
-            target="_blank" rel="noopener noreferrer nofollow">
-            <div class="lazyload-wrapper ">
-              <img class="tradeImage1" src="https://media.istockphoto.com/id/943292690/photo/financial-and-technical-data-analysis-graph-showing-stock-market-trends.jpg?s=612x612&w=0&k=20&c=pPx6ScJIqxo60fAExwJRIzYNQ_Jd-l-L78yUIJEzfAY=" width="280" height="210" alt="ios" loading="lazy"/>
-            </div>
-          </a>
-      </div>
 
-      <div className="Tile2">
-          <a  class="" 
-            target="_blank" rel="noopener noreferrer nofollow">
-            <div class="lazyload-wrapper ">
-              <img class="tradeImage1" src="https://media.istockphoto.com/photos/close-up-image-of-a-stock-market-graph-picture-id1213574690?b=1&k=20&m=1213574690&s=612x612&w=0&h=N2lNvavpoTFOjBHIVbKd2BmFj9Q3wjqEpxT5AASB50M=" width="280" height="210" alt="ios" loading="lazy"/>
-            </div>
-          </a>
-      </div> 
-      <div className="Tile3">
-          <a  class="" 
-            target="_blank" rel="noopener noreferrer nofollow">
-            <div class="lazyload-wrapper ">
-              <img class="tradeImage1" src="https://wallpaperaccess.com/full/1393720.jpg" width="280" height="210" alt="ios" loading="lazy"/>
-            </div>
-          </a>
-      </div> 
-      <div className="Tile4">
-          <a  class="" 
-            target="_blank" rel="noopener noreferrer nofollow">
-            <div class="lazyload-wrapper ">
-              <img class="tradeImage1" src="https://the-tech-trend.com/wp-content/uploads/2021/02/How-to-read-Candlestick-Trading-Charts-A-Complete-Guide-for-Beginners.jpg" width="280" height="210" alt="ios" loading="lazy"/>
-            </div>
-          </a>
-      </div>   
-      <Typography sx={{fontSize:"large", position:"absolute",mt:"13%"}}>
-          Learn trading with our virtual platform - powered by LuluLogics
-      </Typography>
+      <main className="landing-hero">
+        <div className="landing-copy">
+          <h1 className="stocksTransform" aria-label="Invest in US Stocks">
+            Invest in
+            <span className="landing-words" aria-hidden="true">
+              {['US Stocks', 'IPO', 'Future', 'Yourself', 'Options'].map((word) => (
+                <span key={word}>{word}</span>
+              ))}
+            </span>
+          </h1>
+          <p className="landing-description">
+            Real markets • Virtual money • Powered by AI
+          </p>
+        </div>
 
-        <Copyright sx={{
-          position:"absolute",
-          mt:"45%", 
-          ml:"35%", 
-          color:"white"}}/>
+        <div className="landing-images">
+          {tradingImages.map(({ src, alt }) => (
+            <img key={src} src={src} alt={alt} width="280" height="210" />
+          ))}
+        </div>
+      </main>
 
-
-      </Typography>
-      
-
+      <Box component="footer" className="landing-footer">
+        <Copyright sx={{ color: 'white' }} />
+      </Box>
     </Box>
   );
 }
